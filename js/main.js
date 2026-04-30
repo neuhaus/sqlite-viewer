@@ -78,13 +78,9 @@ function initialize() {
 
     const loadUrlDB = hashParams.get("url");
     if (loadUrlDB != null) {
-        let url = decodeURIComponent(loadUrlDB);
-        if (!url.startsWith("http://") && !url.startsWith("https://")) {
-            url = new URL(url, window.location.origin).href;
-        }
         setIsLoading(true);
         const xhr = new XMLHttpRequest();
-        xhr.open("GET", url, true);
+        xhr.open("GET", decodeURIComponent(loadUrlDB), true);
         xhr.responseType = "arraybuffer";
         xhr.onload = function (e) {
             loadDB(this.response);
