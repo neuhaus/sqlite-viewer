@@ -8,11 +8,11 @@ SQLite Viewer
 You can also load remote files (using JS ajax, remote server must send `Access-Control-Allow-Origin:*`) and prefill a SQL query using hash parameters:
 
 - Load a remote SQLite file:
-  `http://inloop.github.io/sqlite-viewer/#url=http://example.com/data.sqlite`
+  `http://example.org/sqlite-viewer/#url=http://example.com/data.sqlite`
 - Prefill a SQL query:
-  `http://inloop.github.io/sqlite-viewer/#sql=SELECT%20*%20FROM%20table`
+  `http://example.org/sqlite-viewer/#sql=SELECT%20*%20FROM%20table`
 - Load a remote file and prefill a query at the same time:
-  `http://inloop.github.io/sqlite-viewer/#url=http://example.com/data.sqlite&sql=SELECT%20*%20FROM%20table`
+  `http://example.org/sqlite-viewer/#url=http://example.com/data.sqlite&sql=SELECT%20*%20FROM%20table`
 
 Available hash parameters:
 - `url` - URL of a remote SQLite file to load
@@ -20,15 +20,4 @@ Available hash parameters:
 
 ![](/img/preview.png?raw=true "Example sqlite")
 
-### License
-    Licensed under the Apache License, Version 2.0 (the "License");
-    you may not use this file except in compliance with the License.
-    You may obtain a copy of the License at
-    
-    http://www.apache.org/licenses/LICENSE-2.0
-    
-    Unless required by applicable law or agreed to in writing, software
-    distributed under the License is distributed on an "AS IS" BASIS,
-    WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-    See the License for the specific language governing permissions and
-    limitations under the License.
+Licensed under the Apache License, Version 2.0 — see [LICENSE](LICENSE) for details.
