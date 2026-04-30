@@ -12,6 +12,7 @@ let loadedTableNames = [];
 const editor = ace.edit("sql-editor");
 const errorBox = $("#error");
 const infoBox = $("#info");
+const hashParams = new URLSearchParams(window.location.hash.substring(1));
 
 const selectFormatter = function (item) {
     const index = item.text.indexOf("(");
@@ -70,16 +71,7 @@ function initialize() {
         el.stopPropagation();
     });
 
-    //Check url to load remote DB
-    $.urlParam = function (name) {
-        let results = new RegExp( `[\?&]${name}=([^&#]*)`).exec(window.location.href);
-        if (results == null) {
-            return null;
-        } else {
-            return results[1] || 0;
-        }
-    };
-    const loadUrlDB = $.urlParam("url");
+    const loadUrlDB = hashParams.get("url");
     if (loadUrlDB != null) {
         setIsLoading(true);
         const xhr = new XMLHttpRequest();
@@ -137,6 +129,12 @@ function loadDB(arrayBuffer) {
         //Select first table and show It
         tableList.val(firstTableName);
         doDefaultSelect(firstTableName);
+
+        const sqlParam = hashParams.get("sql");
+        if (sqlParam != null) {
+            editor.setValue(sqlParam, -1);
+            renderQuery(sqlParam);
+        }
 
         $("#output-box").fadeIn();
         $(".nouploadinfo").hide();
