@@ -42,6 +42,10 @@
     .ace-chrome .ace_constant.ace_numeric {
         color: #7ec8e3 !important;
     }
+
+    .ace-chrome .ace_string {
+        color: #a8df8e !important;
+    }
 }
 
 #dropzone {
