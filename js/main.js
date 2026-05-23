@@ -435,6 +435,7 @@ async function executeSql() {
     // If query creates, drops, alters, or modifies data, refresh the dropdown to keep counts/names in sync
     const SCHEMA_MODIFY_REGEX = /\b(create|drop|alter|insert|delete|update|replace)\b/i;
     if (SCHEMA_MODIFY_REGEX.test(query)) {
+        lastCachedQueryCount = { select: "", count: 0 };
         await populateTableList();
     } else {
         $("#tables").val(getTableNameFromQuery(query)).trigger("change.select2");
