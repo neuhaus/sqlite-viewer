@@ -5,12 +5,12 @@ SQLite Viewer
 
 You can also load remote files (using JS ajax, remote server must send `Access-Control-Allow-Origin:*`) and prefill a SQL query using hash parameters:
 
-- Load a remote SQLite file:
-  `https://example.org/sqlite-viewer/#url=https://example.com/data.sqlite`
-- Prefill a SQL query:
-  `https://example.org/sqlite-viewer/#sql=SELECT%20*%20FROM%20table`
-- Load a remote file and prefill a query at the same time:
-  `https://example.org/sqlite-viewer/#url=https://example.com/data.sqlite&sql=SELECT%20*%20FROM%20table`
+- To load a remote SQLite file upon page load, append
+  `#url=examples/Chinook_Sqlite.zip` to the URL. Both absolute and relative URLs work. So do zipped files.
+- To prefill a SQL query, append
+  `#sql=SELECT%20*%20FROM%20table` to the URL.
+- To load a remote file and prefill a query at the same time: Append
+  `#url=examples/Chinook_Sqlite.zip&sql=SELECT%20*%20FROM%20table`
 
 Available hash parameters:
 - `url` - URL of a remote SQLite file to load
