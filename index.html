@@ -141,6 +141,30 @@
 <input type="file" id="dropzone-dialog" style="opacity: 0;display:none">
 
 <script src="js/jquery-4.0.0.slim.min.js"></script>
+<script>
+    // jQuery 4.0 compatibility shims for older plugins (like Select2)
+    if (typeof jQuery !== 'undefined') {
+        if (!jQuery.isArray) jQuery.isArray = Array.isArray;
+        if (!jQuery.trim) {
+            jQuery.trim = function(str) {
+                return str == null ? "" : String(str).trim();
+            };
+        }
+        if (!jQuery.isFunction) {
+            jQuery.isFunction = function(obj) {
+                return typeof obj === "function";
+            };
+        }
+        if (!jQuery.isWindow) {
+            jQuery.isWindow = function(obj) {
+                return obj != null && obj === obj.window;
+            };
+        }
+        if (!jQuery.now) {
+            jQuery.now = Date.now;
+        }
+    }
+</script>
 <script src="js/select2.min.js?v=4013"></script>
 <script src="js/prism.js"></script>
 <script src="js/codejar.js"></script>

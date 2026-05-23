@@ -1,5 +1,5 @@
 const globalWindow = window;
-export function CodeJar(editor, highlight, opt = {}) {
+function CodeJar(editor, highlight, opt = {}) {
     const options = {
         tab: '\t',
         indentOn: /[({\[]$/,

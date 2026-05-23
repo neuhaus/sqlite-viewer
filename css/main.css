@@ -75,10 +75,13 @@
 #dropzone {
     height: 450px;
     cursor: pointer;
+    transition: height 0.5s ease;
 }
 
 #output-box {
     display: none;
+    opacity: 0;
+    transition: opacity 0.5s ease;
 }
 
 #sql-editor {

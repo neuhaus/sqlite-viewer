@@ -162,10 +162,13 @@ async function loadDB(arrayBuffer) {
             await doDefaultSelect(firstTableName);
         }
 
-        $("#output-box").fadeIn();
+        $("#output-box").show();
+        setTimeout(() => {
+            $("#output-box").css("opacity", 1);
+        }, 50);
         $(".nouploadinfo").hide();
         $("#sample-db-link").hide();
-        $("#dropzone").delay(50).animate({height: 75}, 500);
+        $("#dropzone").css("height", "75px");
 
     } catch (ex) {
         setIsLoading(false);
