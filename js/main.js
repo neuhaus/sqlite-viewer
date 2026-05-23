@@ -429,7 +429,7 @@ function renderQuery(query) {
     sel.free();
 
     if (isEmptyTable) {
-        infoBox.text("No data for given select.");
+        infoBox.text("No data returned for the given query.");
         infoBox.show();
     }
 
