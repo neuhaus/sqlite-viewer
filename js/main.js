@@ -24,7 +24,10 @@ const selectFormatter = function (item) {
     if (index > -1) {
         const name = item.text.substring(0, index);
         const tableName = item.text.substring(index - 1);
-        return $(`<span>${name}<span style="color:#ccc">${tableName}</span></span>`);
+        const span = $("<span>");
+        span.append(document.createTextNode(name));
+        span.append($("<span>").css("color", "#ccc").text(tableName));
+        return span;
     } else {
         return item.text;
     }
@@ -127,7 +130,8 @@ function loadDB(arrayBuffer) {
             const rowCount = getTableRowsCount(name);
             loadedTableNames.push(name);
             const tableType = type !== "table" ? `, ${type}` : "";
-            tableList.append(`<option value="${name}">${name} (${rowCount} rows${tableType})</option>`);
+            const option = $("<option>").val(name).text(`${name} (${rowCount} rows${tableType})`);
+            tableList.append(option);
         }
         tables.free();
 
