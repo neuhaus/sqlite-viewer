@@ -441,11 +441,8 @@ function renderQuery(query) {
 
     refreshPagination(query);
 
-    // Enable tooltips
     document.querySelectorAll('[data-bs-toggle="tooltip"]')
         .forEach(tooltipTriggerEl => new bootstrap.Tooltip(tooltipTriggerEl));
-
-    dataBox.editableTableWidget();
 }
 
 function renderBlobItem(tr, bytes) {
