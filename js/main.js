@@ -10,7 +10,41 @@ function quoteIdentifier(name) {
     return '"' + name.replace(/"/g, '""') + '"';
 }
 
-let db = null;
+let dbLoaded = false;
+let worker = null;
+let nextMessageId = 0;
+const pendingMessages = new Map();
+
+function initWorker() {
+    worker = new Worker("js/worker.sql-wasm.js");
+    worker.onmessage = function (event) {
+        const data = event.data;
+        const id = data.id;
+
+        if (pendingMessages.has(id)) {
+            const { resolve, reject } = pendingMessages.get(id);
+            pendingMessages.delete(id);
+
+            if (data.error) {
+                reject(new Error(data.error));
+            } else {
+                resolve(data);
+            }
+        }
+    };
+    worker.onerror = function (err) {
+        console.error("Worker error:", err);
+    };
+}
+
+function sendWorkerMessage(action, payload = {}, transferables = []) {
+    return new Promise((resolve, reject) => {
+        const id = nextMessageId++;
+        pendingMessages.set(id, { resolve, reject });
+        worker.postMessage({ id, action, ...payload }, transferables);
+    });
+}
+
 let lastCachedQueryCount = { select: "", count: 0 };
 let loadedTableNames = [];
 let editor = null;
@@ -56,6 +90,7 @@ function initialize() {
         $("#dropzone, #dropzone-dialog").hide();
         $("#compat-error").toggleClass("d-none", false);
     } else {
+        initWorker();
         setupDragAndDrop();
     }
 
@@ -80,54 +115,51 @@ function initialize() {
     }
 }
 
-function loadDB(arrayBuffer) {
+async function loadDB(arrayBuffer) {
     setIsLoading(true);
 
     resetTableList();
 
-    initSqlJs({locateFile: file => SQL_WASM_PATH}).then(function (SQL) {
-        let tables = null;
-        try {
-            db = new SQL.Database(new Uint8Array(arrayBuffer));
+    try {
+        // Send ArrayBuffer to Worker using transferable array for 0-copy transfer
+        await sendWorkerMessage("open", { buffer: arrayBuffer }, [arrayBuffer]);
+        dbLoaded = true;
 
-            //Get all table names from master table
-            tables = db.prepare("SELECT * FROM sqlite_master WHERE type='table' OR type='view' ORDER BY name");
-        } catch (ex) {
-            if (tables !== null) {
-                tables.free();
-            }
-            setIsLoading(false);
-            window.alert(ex);
-            return;
-        }
+        // Get all table names from master table using exec action
+        const masterResults = await sendWorkerMessage("exec", {
+            sql: "SELECT name, type FROM sqlite_master WHERE type='table' OR type='view' ORDER BY name"
+        });
 
-        let firstTableName = null;
         const tableList = $("#tables");
+        let firstTableName = null;
 
-        while (tables.step()) {
-            const rowObj = tables.getAsObject();
-            const name = rowObj["name"];
-            const type = rowObj["type"];
+        if (masterResults.results && masterResults.results.length > 0) {
+            const rows = masterResults.results[0].values;
+            for (let i = 0; i < rows.length; i++) {
+                const name = rows[i][0];
+                const type = rows[i][1];
 
-            if (firstTableName === null) {
-                firstTableName = name;
+                if (firstTableName === null) {
+                    firstTableName = name;
+                }
+
+                // getTableRowsCount is now asynchronous
+                const rowCount = await getTableRowsCount(name);
+                loadedTableNames.push(name);
+                const tableType = type !== "table" ? `, ${type}` : "";
+                const option = $("<option>").val(name).text(`${name} (${rowCount} rows${tableType})`);
+                tableList.append(option);
             }
-            const rowCount = getTableRowsCount(name);
-            loadedTableNames.push(name);
-            const tableType = type !== "table" ? `, ${type}` : "";
-            const option = $("<option>").val(name).text(`${name} (${rowCount} rows${tableType})`);
-            tableList.append(option);
         }
-        tables.free();
 
         //Select first table and show It
         tableList.val(firstTableName);
         const sqlParam = hashParams.get("sql");
         if (sqlParam != null) {
             editor.updateCode(sqlParam);
-            renderQuery(sqlParam);
+            await renderQuery(sqlParam);
         } else {
-            doDefaultSelect(firstTableName);
+            await doDefaultSelect(firstTableName);
         }
 
         $("#output-box").fadeIn();
@@ -135,23 +167,30 @@ function loadDB(arrayBuffer) {
         $("#sample-db-link").hide();
         $("#dropzone").delay(50).animate({height: 75}, 500);
 
+    } catch (ex) {
         setIsLoading(false);
-    });
+        window.alert(ex.message || ex);
+    } finally {
+        setIsLoading(false);
+    }
 }
 
-function getTableRowsCount(name) {
-    const sel = db.prepare(`SELECT COUNT(*) AS count FROM ${quoteIdentifier(name)}`);
-    if (sel.step()) {
-        const count = sel.getAsObject()["count"];
-        sel.free();
-        return count;
-    } else {
-        sel.free();
+async function getTableRowsCount(name) {
+    try {
+        const results = await sendWorkerMessage("exec", {
+            sql: `SELECT COUNT(*) AS count FROM ${quoteIdentifier(name)}`
+        });
+        if (results.results && results.results.length > 0) {
+            return results.results[0].values[0][0];
+        }
+        return -1;
+    } catch (e) {
+        console.error(e);
         return -1;
     }
 }
 
-function getQueryRowCount(query) {
+async function getQueryRowCount(query) {
     if (query === lastCachedQueryCount.select) {
         return lastCachedQueryCount.count;
     }
@@ -160,17 +199,17 @@ function getQueryRowCount(query) {
 
     if (queryReplaced !== query) {
         queryReplaced = queryReplaced.replace(SQL_LIMIT_REGEX, "");
-        const sel = db.prepare(queryReplaced);
-        if (sel.step()) {
-            const count = sel.getAsObject()["count"];
-            sel.free();
-
-            lastCachedQueryCount.select = query;
-            lastCachedQueryCount.count = count;
-
-            return count;
-        } else {
-            sel.free();
+        try {
+            const results = await sendWorkerMessage("exec", { sql: queryReplaced });
+            if (results.results && results.results.length > 0) {
+                const count = results.results[0].values[0][0];
+                lastCachedQueryCount.select = query;
+                lastCachedQueryCount.count = count;
+                return count;
+            }
+            return -1;
+        } catch (e) {
+            console.error(e);
             return -1;
         }
     } else {
@@ -178,23 +217,33 @@ function getQueryRowCount(query) {
     }
 }
 
-function getTableColumnTypes(tableName) {
+async function getTableColumnTypes(tableName) {
     let result = new Map();
-    const sel = db.prepare(`PRAGMA table_info(${quoteIdentifier(tableName)})`);
+    try {
+        const results = await sendWorkerMessage("exec", {
+            sql: `PRAGMA table_info(${quoteIdentifier(tableName)})`
+        });
+        if (results.results && results.results.length > 0) {
+            const rows = results.results[0].values;
+            // PRAGMA table_info returns columns: cid, name, type, notnull, dflt_value, pk
+            for (let i = 0; i < rows.length; i++) {
+                const name = rows[i][1];
+                let type = rows[i][2];
+                const notnull = rows[i][3];
+                const pk = rows[i][5];
 
-    while (sel.step()) {
-        const obj = sel.getAsObject();
-        let type = obj["type"];
-        if (obj["notnull"] === 1) {
-            type += " NOT NULL";
+                if (notnull === 1) {
+                    type += " NOT NULL";
+                }
+                if (pk === 1) {
+                    type += " PRIMARY KEY";
+                }
+                result.set(name, type);
+            }
         }
-        if (obj["pk"] === 1) {
-            type += " PRIMARY KEY";
-        }
-        result.set(obj.name, type);
+    } catch (e) {
+        console.error(e);
     }
-    sel.free();
-
     return result;
 }
 
@@ -209,8 +258,8 @@ function resetTableList() {
         templateSelection: selectFormatter,
         templateResult: selectFormatter
     });
-    tables.on("change", function (e) {
-        doDefaultSelect(tables.val());
+    tables.on("change", async function (e) {
+        await doDefaultSelect(tables.val());
     });
 }
 
@@ -294,15 +343,15 @@ function handleFile(file) {
     reader.readAsArrayBuffer(file);
 }
 
-function doDefaultSelect(name) {
+async function doDefaultSelect(name) {
     const defaultSelect = `SELECT * FROM ${quoteIdentifier(name)} LIMIT 0,30`;
     editor.updateCode(defaultSelect);
-    renderQuery(defaultSelect);
+    await renderQuery(defaultSelect);
 }
 
-function executeSql() {
+async function executeSql() {
     const query = editor.toString();
-    renderQuery(query);
+    await renderQuery(query);
     $("#tables").val(getTableNameFromQuery(query));
     updateHashSql(query);
 }
@@ -316,7 +365,7 @@ function getTableNameFromQuery(query) {
     }
 }
 
-function parseLimitFromQuery(query) {
+async function parseLimitFromQuery(query) {
     const sqlRegex = SQL_LIMIT_REGEX.exec(query);
     if (sqlRegex != null) {
         let result = { max: 0, offset: 0 };
@@ -335,7 +384,7 @@ function parseLimitFromQuery(query) {
             return result;
         }
 
-        const queryRowsCount = getQueryRowCount(query);
+        const queryRowsCount = await getQueryRowCount(query);
         if (queryRowsCount !== -1) {
             result.pages = Math.ceil(queryRowsCount / result.max);
         }
@@ -348,11 +397,11 @@ function parseLimitFromQuery(query) {
     }
 }
 
-function setPage(el, next) {
+async function setPage(el, next) {
     if ($(el).hasClass("disabled")) return;
 
     const query = editor.toString();
-    const limit = parseLimitFromQuery(query);
+    const limit = await parseLimitFromQuery(query);
 
     let pageToSet = 0;
     if (typeof next !== "undefined") {
@@ -369,11 +418,11 @@ function setPage(el, next) {
     const offset = (pageToSet * limit.max);
     editor.updateCode(query.replace(SQL_LIMIT_REGEX, `LIMIT ${offset},${limit.max}`));
 
-    executeSql();
+    await executeSql();
 }
 
-function refreshPagination(query) {
-    const limit = parseLimitFromQuery(query);
+async function refreshPagination(query) {
+    const limit = await parseLimitFromQuery(query);
     if (limit !== null && limit.pages > 0) {
         const pager = $("#pager");
         const pagePrev = $("#page-prev");
@@ -421,7 +470,7 @@ function htmlEncode(value) {
     return $("<div/>").text(value).html();
 }
 
-function renderQuery(query) {
+async function renderQuery(query) {
     const dataBox = $("#data");
     const thead = dataBox.find("thead").find("tr");
     const tbody = dataBox.find("tbody");
@@ -435,56 +484,58 @@ function renderQuery(query) {
     let columnTypes = new Map();
     const tableName = getTableNameFromQuery(query);
     if (tableName != null) {
-        columnTypes = getTableColumnTypes(tableName);
+        columnTypes = await getTableColumnTypes(tableName);
     }
 
-    let sel = null;
+    let results;
     try {
-        sel = db.prepare(query);
+        results = await sendWorkerMessage("exec", { sql: query });
     } catch (ex) {
-        if (sel != null) {
-            sel.free();
-        }
-        showError(ex);
+        showError(ex.message || ex);
         return;
     }
 
     let isEmptyTable = true;
-    const columnNames = sel.getColumnNames();
-    for (let i = 0; i < columnNames.length; i++) {
-        const columnName = columnNames[i];
-        const type = columnTypes.has(columnName) ? columnTypes.get(columnNames[i]) : "";
-        thead.append(`<th><span data-bs-toggle="tooltip" title="${type}">${columnNames[i]}</span></th>`);
-    }
 
-    while (sel.step()) {
+    if (results.results && results.results.length > 0) {
         isEmptyTable = false;
-        const tr = $('<tr>');
-        const s = sel.get();
-        for (let i = 0; i < s.length; i++) {
+        const res = results.results[0];
+        const columnNames = res.columns;
+        const values = res.values;
+
+        for (let i = 0; i < columnNames.length; i++) {
             const columnName = columnNames[i];
-            const type = columnTypes.has(columnName) ? columnTypes.get(columnName).toLowerCase() : "";
-            if (type === "blob" || type === "blob sub_type binary") {
-                if (s[i] === null) {
-                    tr.append(`<td><span title="Blob">null</span></td>`);
-                } else {
-                    renderBlobItem(tr, s[i]);
-                }
-            } else {
-                let value = htmlEncode(s[i]);
-                tr.append(`<td><span title="${value}">${value}</span></td>`);
-            }
+            const type = columnTypes.has(columnName) ? columnTypes.get(columnName) : "";
+            thead.append(`<th><span data-bs-toggle="tooltip" title="${type}">${columnName}</span></th>`);
         }
-        tbody.append(tr);
+
+        for (let r = 0; r < values.length; r++) {
+            const tr = $('<tr>');
+            const rowValues = values[r];
+            for (let i = 0; i < rowValues.length; i++) {
+                const columnName = columnNames[i];
+                const type = columnTypes.has(columnName) ? columnTypes.get(columnName).toLowerCase() : "";
+                if (type === "blob" || type === "blob sub_type binary") {
+                    if (rowValues[i] === null) {
+                        tr.append(`<td><span title="Blob">null</span></td>`);
+                    } else {
+                        renderBlobItem(tr, rowValues[i]);
+                    }
+                } else {
+                    let value = htmlEncode(rowValues[i]);
+                    tr.append(`<td><span title="${value}">${value}</span></td>`);
+                }
+            }
+            tbody.append(tr);
+        }
     }
-    sel.free();
 
     if (isEmptyTable) {
         infoBox.text("No data returned for the given query.");
         infoBox.show();
     }
 
-    refreshPagination(query);
+    await refreshPagination(query);
 
     document.querySelectorAll('[data-bs-toggle="tooltip"]')
         .forEach(tooltipTriggerEl => new bootstrap.Tooltip(tooltipTriggerEl));
@@ -529,59 +580,54 @@ function arrayToCsv(data) {
     ).join('\r\n');  // rows starting on new lines
 }
 
-function exportCsvTableQuery(query) {
+async function exportCsvTableQuery(query) {
     let exportedRows = [];
-    let sel = null;
     try {
-        sel = db.prepare(query);
-    } catch (ex) {
-        if (sel != null) {
-            sel.free();
+        const results = await sendWorkerMessage("exec", { sql: query });
+        if (results.results && results.results.length > 0) {
+            const res = results.results[0];
+            exportedRows.push(res.columns);
+            exportedRows.push(...res.values);
         }
-        showError(ex);
+        return exportedRows;
+    } catch (ex) {
+        showError(ex.message || ex);
         setIsLoading(false);
         return null;
     }
-
-    const columnNames = sel.getColumnNames();
-
-    exportedRows.push(...[columnNames]);
-    while (sel.step()) {
-        const rows = sel.get();
-        exportedRows.push(...[rows]);
-    }
-    sel.free();
-    return exportedRows;
 }
 
-function exportCsvTable(tableName) {
-    return exportCsvTableQuery(`SELECT * FROM ${quoteIdentifier(tableName)}`);
+async function exportCsvTable(tableName) {
+    return await exportCsvTableQuery(`SELECT * FROM ${quoteIdentifier(tableName)}`);
 }
 
-function exportAllToCsv() {
+async function exportAllToCsv() {
     setIsLoading(true);
     const zip = new JSZip();
-    for (const tableName of loadedTableNames) {
-        const exportedRows = exportCsvTable(tableName);
-        if (exportedRows != null) {
-            zip.file(tableName + ".csv", arrayToCsv(exportedRows));
-        } else {
-            return;
+    try {
+        for (const tableName of loadedTableNames) {
+            const exportedRows = await exportCsvTable(tableName);
+            if (exportedRows != null) {
+                zip.file(tableName + ".csv", arrayToCsv(exportedRows));
+            } else {
+                setIsLoading(false);
+                return;
+            }
         }
-    }
 
-    zip.generateAsync({type: "blob"})
-        .then(function (content) {
-            saveAs(content, "exported_all_db.zip");
-        });
+        const content = await zip.generateAsync({type: "blob"});
+        saveAs(content, "exported_all_db.zip");
+    } catch (e) {
+        showError(e);
+    }
     setIsLoading(false);
 }
 
-function exportSelectedTableToCsv() {
+async function exportSelectedTableToCsv() {
     const tableName = $("#tables").val();
     setIsLoading(true);
 
-    const exportedRows = exportCsvTable(tableName);
+    const exportedRows = await exportCsvTable(tableName);
     if (exportedRows != null) {
         const blob = new Blob([arrayToCsv(exportedRows)], {type: "text/plain;charset=utf-8"});
         saveAs(blob, "exported_" + tableName.toLowerCase() + "_db.csv");
@@ -590,11 +636,11 @@ function exportSelectedTableToCsv() {
     setIsLoading(false);
 }
 
-function exportQueryTableToCsv() {
+async function exportQueryTableToCsv() {
     setIsLoading(true);
 
     const query = editor.toString();
-    const exportedRows = exportCsvTableQuery(query);
+    const exportedRows = await exportCsvTableQuery(query);
     if (exportedRows != null) {
         const blob = new Blob([arrayToCsv(exportedRows)], {type: "text/plain;charset=utf-8"});
         saveAs(blob, "exported_" + getTableNameFromQuery(query).toLowerCase() + "_db.csv");
