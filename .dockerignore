@@ -1,0 +1,14 @@
+# Exclude Git files
+.git
+.gitignore
+
+# Exclude large development and sample databases
+examples
+sqlite-wasm-3530100
+
+# Exclude development files and documentation
+README.md
+LICENSE
+walkthrough.md
+task.md
+implementation_plan.md
