@@ -839,21 +839,15 @@ function deleteHistoryItem(index) {
 }
 
 function copyQueryToClipboard(sql) {
-    if (navigator.clipboard && navigator.clipboard.writeText) {
-        navigator.clipboard.writeText(sql).catch(() => fallbackCopy(sql));
-    } else {
-        fallbackCopy(sql);
-    }
-}
-
-function fallbackCopy(text) {
     const ta = document.createElement("textarea");
-    ta.value = text;
+    ta.value = sql;
     ta.style.position = "fixed";
+    ta.style.left = "-9999px";
     ta.style.opacity = "0";
     document.body.appendChild(ta);
+    ta.focus();
     ta.select();
-    document.execCommand("copy");
+    try { document.execCommand("copy"); } catch (_) {}
     document.body.removeChild(ta);
 }
 
