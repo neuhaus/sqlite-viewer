@@ -149,7 +149,6 @@ function loadDB(arrayBuffer) {
         $(".nouploadinfo").hide();
         $("#sample-db-link").hide();
         $("#dropzone").delay(50).animate({height: 75}, 500);
-        $("#success-box").show();
 
         setIsLoading(false);
     });
