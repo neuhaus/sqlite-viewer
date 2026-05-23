@@ -126,7 +126,6 @@ function initialize() {
 }
 
 async function loadRemoteDB(urlStr) {
-    updateHashUrl(urlStr);
     try {
         const resolvedUrl = new URL(decodeURIComponent(urlStr), window.location.href);
         setIsLoading(true);
@@ -141,6 +140,7 @@ async function loadRemoteDB(urlStr) {
         } else {
             await loadDB(buffer);
         }
+        updateHashUrl(urlStr);
     } catch (err) {
         setIsLoading(false);
         window.alert("Error loading remote database: " + err.message);
