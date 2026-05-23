@@ -6,6 +6,10 @@ const SQL_FROM_REGEX = /FROM\s+((?=['"])((["'])(?<g1>[^'"]+))|(?<g2>\w+))/mi;
 const SQL_LIMIT_REGEX = /LIMIT\s+(\d+)(?:\s*,\s*(\d+))?/mi;
 const SQL_SELECT_REGEX = /SELECT\s+[^;]+\s+FROM\s+/mi;
 
+function quoteIdentifier(name) {
+    return '"' + name.replace(/"/g, '""') + '"';
+}
+
 let db = null;
 let lastCachedQueryCount = { select: "", count: 0 };
 let loadedTableNames = [];
@@ -155,7 +159,7 @@ function loadDB(arrayBuffer) {
 }
 
 function getTableRowsCount(name) {
-    const sel = db.prepare(`SELECT COUNT(*) AS count FROM '${name}'`);
+    const sel = db.prepare(`SELECT COUNT(*) AS count FROM ${quoteIdentifier(name)}`);
     if (sel.step()) {
         const count = sel.getAsObject()["count"];
         sel.free();
@@ -195,7 +199,7 @@ function getQueryRowCount(query) {
 
 function getTableColumnTypes(tableName) {
     let result = new Map();
-    const sel = db.prepare(`PRAGMA table_info('${tableName}')`);
+    const sel = db.prepare(`PRAGMA table_info(${quoteIdentifier(tableName)})`);
 
     while (sel.step()) {
         const obj = sel.getAsObject();
@@ -246,7 +250,7 @@ function dropzoneClick() {
 }
 
 function doDefaultSelect(name) {
-    const defaultSelect = `SELECT * FROM '${name}' LIMIT 0,30`;
+    const defaultSelect = `SELECT * FROM ${quoteIdentifier(name)} LIMIT 0,30`;
     editor.setValue(defaultSelect, -1);
     renderQuery(defaultSelect);
 }
@@ -509,7 +513,7 @@ function exportCsvTableQuery(query) {
 }
 
 function exportCsvTable(tableName) {
-    return exportCsvTableQuery(`SELECT * FROM '${tableName}'`);
+    return exportCsvTableQuery(`SELECT * FROM ${quoteIdentifier(tableName)}`);
 }
 
 function exportAllToCsv() {
