@@ -17,6 +17,36 @@ and prefill a SQL query using hash parameters:
 
 Try [this live example](https://neuhaus.github.io/sqlite-viewer/#url=examples%2FChinook_Sqlite.zip&sql=SELECT+%0A++++Album.AlbumId%2C%0A++++Album.Title+AS+AlbumTitle%2C%0A++++Track.TrackId%2C%0A++++Track.Name+AS+TrackName%0AFROM+Album%0AJOIN+Track+ON+Album.AlbumId+%3D+Track.AlbumId%0AORDER+BY+Album.AlbumId%2C+TrackId%0ALIMIT+0%2C40%3B+)!
 
+## Docker
+
+You can run and configure the SQLite Viewer inside a lightweight production container using Docker.
+
+### 1. Build the Docker Image
+Execute the following build command in your workspace directory:
+```bash
+docker build -t sqlite-viewer .
+```
+
+### 2. Auto-load a Database via Volume Mount
+To mount your local database file (`.sqlite` / `.db`) and have the application **automatically fetch and load it** on page load:
+```bash
+docker run --rm -p 8080:80 \
+  -v "${PWD}/examples/Chinook_Sqlite.sqlite:/var/www/data.sqlite" \
+  sqlite-viewer
+```
+*Note: Navigate to `http://localhost:8080` in your browser. The database tables will load instantly with zero user interaction.*
+
+### 3. Configure Default SQL Query & Database URL
+You can specify a custom database URL and auto-execute a default SQL query on startup using environment variables:
+```bash
+docker run --rm -p 8080:80 \
+  -e DEFAULT_URL="examples/Chinook_Sqlite.sqlite" \
+  -e DEFAULT_SQL="SELECT name, type FROM sqlite_master WHERE type='table' ORDER BY name;" \
+  sqlite-viewer
+```
+* **`DEFAULT_URL`**: The database at this URL/path (relative path or absolute URL) will be fetched and opened on page load.
+* **`DEFAULT_SQL`**: The code editor will be pre-populated and this query will execute automatically on startup.
+
 ## Libraries
 
 - Using the official [sqlite3-wasm](https://sqlite.org/wasm/doc/trunk/index.md) for parsing sqlite files.
