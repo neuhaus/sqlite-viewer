@@ -57,6 +57,18 @@ function updateHashSql(query) {
     history.replaceState(null, null, `#${hashParams.toString()}`);
 }
 
+function updateHashUrl(urlStr) {
+    hashParams.set("url", urlStr);
+    history.replaceState(null, null, `#${hashParams.toString()}`);
+}
+
+function clearHashUrl() {
+    if (hashParams.has("url")) {
+        hashParams.delete("url");
+        history.replaceState(null, null, `#${hashParams.toString()}`);
+    }
+}
+
 const selectFormatter = function (item) {
     const index = item.text.indexOf("(");
     if (index > -1) {
@@ -114,6 +126,7 @@ function initialize() {
 }
 
 async function loadRemoteDB(urlStr) {
+    updateHashUrl(urlStr);
     try {
         const resolvedUrl = new URL(decodeURIComponent(urlStr), window.location.href);
         setIsLoading(true);
@@ -380,6 +393,7 @@ function setupDragAndDrop() {
 }
 
 function handleFile(file) {
+    clearHashUrl();
     if (file.name.endsWith(".zip")) {
         handleZipFile(file);
     } else {
