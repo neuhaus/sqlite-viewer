@@ -97,13 +97,15 @@
 
         <div class="d-flex mt-3 mb-3">
             <div id="sql-editor" class="form-control form-control-lg col me-2"></div>
-            <button class="btn btn-outline-secondary col-auto me-2 d-flex align-items-center" id="sql-history-btn" type="button" data-bs-toggle="offcanvas" data-bs-target="#history-sidebar" aria-controls="history-sidebar">
-                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-clock-history me-1" viewBox="0 0 16 16">
-                    <path d="M8.515 1.019A7 7 0 0 0 8 1V0a8 8 0 0 1 .589.022zm2.004.45a7 7 0 0 0-.985-.299l.219-.976c.383.086.76.2 1.126.342zm1.37.71a7 7 0 0 0-.439-.27l.493-.87a8 8 0 0 1 .979.654l-.615.789a7 7 0 0 0-.418-.302zm1.834 1.39a7 7 0 0 0-.653-.796l.724-.69c.27.285.52.59.747.91l-.818.576zm.744 1.352a7 7 0 0 0-.214-.382l.893-.45a8 8 0 0 1 .45.824l-.893.382zm.09 2.007a7 7 0 0 0-.022-.589h.997c.012.302.012.605 0 .907h-.997zM0 8a8 8 0 1 1 16 0A8 8 0 0 1 0 8m8-7a7 7 0 0 0-5.468 11.37C3.242 11.226 4.805 10 8 10s4.757 1.225 5.468 2.37A7 7 0 0 0 8 1"/>
-                </svg>
-                History
-            </button>
-            <button class="btn btn-primary col-auto" id="sql-run" type="submit" onclick="executeSql()">Execute</button>
+            <div class="d-flex flex-column gap-1 col-auto">
+                <button class="btn btn-primary flex-fill" id="sql-run" type="submit" onclick="executeSql()">Execute</button>
+                <button class="btn btn-outline-secondary flex-fill d-flex align-items-center justify-content-center" id="sql-history-btn" type="button" data-bs-toggle="offcanvas" data-bs-target="#history-sidebar" aria-controls="history-sidebar">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="currentColor" class="bi bi-clock-history me-1" viewBox="0 0 16 16">
+                        <path d="M8.515 1.019A7 7 0 0 0 8 1V0a8 8 0 0 1 .589.022zm2.004.45a7 7 0 0 0-.985-.299l.219-.976c.383.086.76.2 1.126.342zm1.37.71a7 7 0 0 0-.439-.27l.493-.87a8 8 0 0 1 .979.654l-.615.789a7 7 0 0 0-.418-.302zm1.834 1.39a7 7 0 0 0-.653-.796l.724-.69c.27.285.52.59.747.91l-.818.576zm.744 1.352a7 7 0 0 0-.214-.382l.893-.45a8 8 0 0 1 .45.824l-.893.382zm.09 2.007a7 7 0 0 0-.022-.589h.997c.012.302.012.605 0 .907h-.997zM0 8a8 8 0 1 1 16 0A8 8 0 0 1 0 8m8-7a7 7 0 0 0-5.468 11.37C3.242 11.226 4.805 10 8 10s4.757 1.225 5.468 2.37A7 7 0 0 0 8 1"/>
+                    </svg>
+                    History
+                </button>
+            </div>
         </div>
 
         <div class="alert alert-danger" id="error" style="display: none"></div>
