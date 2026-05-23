@@ -107,11 +107,31 @@ function initialize() {
 
     const loadUrlDB = hashParams.get("url");
     if (loadUrlDB != null) {
-        setIsLoading(true);
-        fetch(decodeURIComponent(loadUrlDB))
-            .then(response => response.arrayBuffer())
-            .then(buffer => loadDB(buffer))
-            .catch(() => setIsLoading(false));
+        try {
+            const resolvedUrl = new URL(decodeURIComponent(loadUrlDB), window.location.href);
+            setIsLoading(true);
+            fetch(resolvedUrl.href)
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error(`HTTP error! status: ${response.status}`);
+                    }
+                    return response.arrayBuffer();
+                })
+                .then(async (buffer) => {
+                    const pathname = resolvedUrl.pathname.toLowerCase();
+                    if (pathname.endsWith(".zip")) {
+                        await handleZipFile(buffer);
+                    } else {
+                        await loadDB(buffer);
+                    }
+                })
+                .catch((err) => {
+                    setIsLoading(false);
+                    window.alert("Error loading remote database: " + err.message);
+                });
+        } catch (e) {
+            window.alert(e.message);
+        }
     }
 }
 
