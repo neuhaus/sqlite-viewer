@@ -21,7 +21,7 @@ elif [ -f "/var/www/data.sqlite" ]; then
 fi
 
 # 2. Escape backslashes and single quotes in SQL to prevent breaking JS syntax
-ESCAPED_SQL=$(echo "$DEFAULT_SQL" | sed 's/\\/\\\\/g' | sed "s/'/\\'/g")
+ESCAPED_SQL=$(echo "$DEFAULT_SQL" | sed 's/\\/\\\\/g' | sed "s/'/\\\\\\'/g")
 
 echo "-> Generating client-side configuration..."
 echo "   DEFAULT_URL: ${DEFAULT_URL:-none}"
