@@ -3,8 +3,15 @@ set -e
 
 echo "=== SQLite Viewer Container Booting ==="
 
-# 1. Check if database volume is mounted at the standard location
-if [ -f "/var/www/data.sqlite" ]; then
+# 1. Check if database volume is mounted at the standard locations
+if [ -f "/var/www/data.zip" ]; then
+    echo "-> Detected mounted SQLite database ZIP at /var/www/data.zip"
+    if [ -z "$DEFAULT_URL" ]; then
+        # Default URL to the mapped Nginx route
+        DEFAULT_URL="data.zip"
+        echo "-> Automatically setting DEFAULT_URL to: data.zip"
+    fi
+elif [ -f "/var/www/data.sqlite" ]; then
     echo "-> Detected mounted SQLite database at /var/www/data.sqlite"
     if [ -z "$DEFAULT_URL" ]; then
         # Default URL to the mapped Nginx route

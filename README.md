@@ -28,10 +28,10 @@ docker build -t sqlite-viewer .
 ```
 
 ### 2. Auto-load a Database via Volume Mount
-To mount your local database file (`.sqlite` / `.db`) and have the application **automatically fetch and load it** on page load:
+To mount your local database file or ZIP archive and have the application **automatically fetch and load it** on page load:
 ```bash
 docker run --rm -p 8080:80 \
-  -v "${PWD}/examples/Chinook_Sqlite.sqlite:/var/www/data.sqlite" \
+  -v "${PWD}/examples/Chinook_Sqlite.zip:/var/www/data.zip" \
   sqlite-viewer
 ```
 *Note: Navigate to `http://localhost:8080` in your browser. The database tables will load instantly with zero user interaction.*
@@ -40,11 +40,11 @@ docker run --rm -p 8080:80 \
 You can specify a custom database URL and auto-execute a default SQL query on startup using environment variables:
 ```bash
 docker run --rm -p 8080:80 \
-  -e DEFAULT_URL="examples/Chinook_Sqlite.sqlite" \
+  -e DEFAULT_URL="examples/Chinook_Sqlite.zip" \
   -e DEFAULT_SQL="SELECT name, type FROM sqlite_master WHERE type='table' ORDER BY name;" \
   sqlite-viewer
 ```
-* **`DEFAULT_URL`**: The database at this URL/path (relative path or absolute URL) will be fetched and opened on page load.
+* **`DEFAULT_URL`**: The database at this URL/path (relative path or absolute URL) will be fetched and opened on page load. Both raw databases and `.zip` archives are supported.
 * **`DEFAULT_SQL`**: The code editor will be pre-populated and this query will execute automatically on startup.
 
 ## Libraries
