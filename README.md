@@ -24,7 +24,7 @@ You can run and configure the SQLite Viewer inside a lightweight production cont
 ### 1. Build the Docker Image
 Execute the following build command in your workspace directory:
 ```bash
-docker build -t sqlite-viewer .
+docker build -t sqlite-viewer -f docker/Dockerfile .
 ```
 
 ### 2. Auto-load a Database via Volume Mount
