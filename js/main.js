@@ -838,6 +838,25 @@ function deleteHistoryItem(index) {
     renderQueryHistory();
 }
 
+function copyQueryToClipboard(sql) {
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(sql).catch(() => fallbackCopy(sql));
+    } else {
+        fallbackCopy(sql);
+    }
+}
+
+function fallbackCopy(text) {
+    const ta = document.createElement("textarea");
+    ta.value = text;
+    ta.style.position = "fixed";
+    ta.style.opacity = "0";
+    document.body.appendChild(ta);
+    ta.select();
+    document.execCommand("copy");
+    document.body.removeChild(ta);
+}
+
 function loadQueryFromHistory(sql) {
     editor.updateCode(sql);
     executeSql();
@@ -897,7 +916,7 @@ function renderQueryHistory() {
                     <pre class="p-2 mb-1 overflow-x-auto" onclick="loadQueryFromHistory(decodeURIComponent('${encodeURIComponent(item.sql)}'))">${escapedSql}</pre>
                     <div class="d-flex gap-2 mt-1">
                         <button class="btn btn-sm btn-light py-0 px-2" onclick="loadQueryFromHistory(decodeURIComponent('${encodeURIComponent(item.sql)}'))">Run</button>
-                        <button class="btn btn-sm btn-light py-0 px-2" onclick="navigator.clipboard.writeText(decodeURIComponent('${encodeURIComponent(item.sql)}'))">Copy</button>
+                        <button class="btn btn-sm btn-light py-0 px-2" onclick="copyQueryToClipboard(decodeURIComponent('${encodeURIComponent(item.sql)}'))">Copy</button>
                     </div>
                 </div>
             </div>
