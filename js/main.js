@@ -844,11 +844,13 @@ function copyQueryToClipboard(sql) {
     ta.style.position = "fixed";
     ta.style.left = "-9999px";
     ta.style.opacity = "0";
-    document.body.appendChild(ta);
+    // Append inside the offcanvas to stay within Bootstrap's focus trap
+    const container = document.getElementById("history-sidebar") || document.body;
+    container.appendChild(ta);
     ta.focus();
     ta.select();
     try { document.execCommand("copy"); } catch (_) {}
-    document.body.removeChild(ta);
+    container.removeChild(ta);
 }
 
 function loadQueryFromHistory(sql) {
