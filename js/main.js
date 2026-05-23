@@ -107,31 +107,30 @@ function initialize() {
 
     const loadUrlDB = hashParams.get("url");
     if (loadUrlDB != null) {
-        try {
-            const resolvedUrl = new URL(decodeURIComponent(loadUrlDB), window.location.href);
-            setIsLoading(true);
-            fetch(resolvedUrl.href)
-                .then(response => {
-                    if (!response.ok) {
-                        throw new Error(`HTTP error! status: ${response.status}`);
-                    }
-                    return response.arrayBuffer();
-                })
-                .then(async (buffer) => {
-                    const pathname = resolvedUrl.pathname.toLowerCase();
-                    if (pathname.endsWith(".zip")) {
-                        await handleZipFile(buffer);
-                    } else {
-                        await loadDB(buffer);
-                    }
-                })
-                .catch((err) => {
-                    setIsLoading(false);
-                    window.alert("Error loading remote database: " + err.message);
-                });
-        } catch (e) {
-            window.alert(e.message);
+        loadRemoteDB(loadUrlDB);
+    } else if (window.APP_CONFIG && window.APP_CONFIG.defaultUrl) {
+        loadRemoteDB(window.APP_CONFIG.defaultUrl);
+    }
+}
+
+async function loadRemoteDB(urlStr) {
+    try {
+        const resolvedUrl = new URL(decodeURIComponent(urlStr), window.location.href);
+        setIsLoading(true);
+        const response = await fetch(resolvedUrl.href);
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
         }
+        const buffer = await response.arrayBuffer();
+        const pathname = resolvedUrl.pathname.toLowerCase();
+        if (pathname.endsWith(".zip")) {
+            await handleZipFile(buffer);
+        } else {
+            await loadDB(buffer);
+        }
+    } catch (err) {
+        setIsLoading(false);
+        window.alert("Error loading remote database: " + err.message);
     }
 }
 
@@ -147,9 +146,14 @@ async function loadDB(arrayBuffer) {
 
         const firstTableName = await populateTableList(true);
         const sqlParam = hashParams.get("sql");
+        const defaultSql = (window.APP_CONFIG && window.APP_CONFIG.defaultSql) ? window.APP_CONFIG.defaultSql : null;
+
         if (sqlParam != null) {
             editor.updateCode(sqlParam);
             await renderQuery(sqlParam);
+        } else if (defaultSql != null) {
+            editor.updateCode(defaultSql);
+            await renderQuery(defaultSql);
         } else if (firstTableName !== null) {
             await doDefaultSelect(firstTableName);
         }
