@@ -278,14 +278,14 @@ function parseLimitFromQuery(query) {
             result.max = parseInt(sqlRegex[1]);
         }
 
-        if (result.max == 0) {
+        if (result.max === 0) {
             result.pages = 0;
             result.currentPage = 0;
             return result;
         }
 
         const queryRowsCount = getQueryRowCount(query);
-        if (queryRowsCount != -1) {
+        if (queryRowsCount !== -1) {
             result.pages = Math.ceil(queryRowsCount / result.max);
         }
         result.currentPage = Math.floor(result.offset / result.max) + 1;
