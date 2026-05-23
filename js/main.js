@@ -13,7 +13,7 @@ function quoteIdentifier(name) {
 let db = null;
 let lastCachedQueryCount = { select: "", count: 0 };
 let loadedTableNames = [];
-const editor = ace.edit("sql-editor");
+let editor = null;
 const errorBox = $("#error");
 const infoBox = $("#info");
 const hashParams = new URLSearchParams(window.location.hash.substring(1));
@@ -60,16 +60,11 @@ function initialize() {
     }
 
     //Initialize editor
-    editor.setTheme("ace/theme/chrome");
-    editor.renderer.setShowGutter(false);
-    editor.renderer.setShowPrintMargin(false);
-    editor.renderer.setPadding(20);
-    editor.renderer.setScrollMargin(8, 8, 0, 0);
-    editor.setHighlightActiveLine(false);
-    editor.getSession().setUseWrapMode(true);
-    editor.getSession().setMode("ace/mode/sql");
-    editor.setOptions({maxLines: 5});
-    editor.setFontSize(16);
+    const editorElement = document.getElementById("sql-editor");
+    editorElement.classList.add("language-sql");
+    editor = CodeJar(editorElement, (el) => {
+        Prism.highlightElement(el);
+    });
 
     $(".no-propagate").on("click", function (el) {
         el.stopPropagation();
@@ -129,7 +124,7 @@ function loadDB(arrayBuffer) {
         tableList.val(firstTableName);
         const sqlParam = hashParams.get("sql");
         if (sqlParam != null) {
-            editor.setValue(sqlParam, -1);
+            editor.updateCode(sqlParam);
             renderQuery(sqlParam);
         } else {
             doDefaultSelect(firstTableName);
@@ -301,12 +296,12 @@ function handleFile(file) {
 
 function doDefaultSelect(name) {
     const defaultSelect = `SELECT * FROM ${quoteIdentifier(name)} LIMIT 0,30`;
-    editor.setValue(defaultSelect, -1);
+    editor.updateCode(defaultSelect);
     renderQuery(defaultSelect);
 }
 
 function executeSql() {
-    const query = editor.getValue();
+    const query = editor.toString();
     renderQuery(query);
     $("#tables").val(getTableNameFromQuery(query));
     updateHashSql(query);
@@ -356,7 +351,7 @@ function parseLimitFromQuery(query) {
 function setPage(el, next) {
     if ($(el).hasClass("disabled")) return;
 
-    const query = editor.getValue();
+    const query = editor.toString();
     const limit = parseLimitFromQuery(query);
 
     let pageToSet = 0;
@@ -372,7 +367,7 @@ function setPage(el, next) {
     }
 
     const offset = (pageToSet * limit.max);
-    editor.setValue(query.replace(SQL_LIMIT_REGEX, `LIMIT ${offset},${limit.max}`), -1);
+    editor.updateCode(query.replace(SQL_LIMIT_REGEX, `LIMIT ${offset},${limit.max}`));
 
     executeSql();
 }
@@ -598,7 +593,7 @@ function exportSelectedTableToCsv() {
 function exportQueryTableToCsv() {
     setIsLoading(true);
 
-    const query = editor.getValue();
+    const query = editor.toString();
     const exportedRows = exportCsvTableQuery(query);
     if (exportedRows != null) {
         const blob = new Blob([arrayToCsv(exportedRows)], {type: "text/plain;charset=utf-8"});
