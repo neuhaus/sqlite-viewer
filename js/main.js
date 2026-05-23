@@ -331,16 +331,50 @@ function setupDragAndDrop() {
 }
 
 function handleFile(file) {
+    if (file.name.endsWith(".zip")) {
+        handleZipFile(file);
+    } else {
+        setIsLoading(true);
+        const reader = new FileReader();
+        reader.onload = function (e) {
+            loadDB(e.target.result);
+        };
+        reader.onerror = function () {
+            setIsLoading(false);
+            window.alert("Error reading file.");
+        };
+        reader.readAsArrayBuffer(file);
+    }
+}
+
+async function handleZipFile(file) {
     setIsLoading(true);
-    const reader = new FileReader();
-    reader.onload = function (e) {
-        loadDB(e.target.result);
-    };
-    reader.onerror = function () {
+    try {
+        const zip = await JSZip.loadAsync(file);
+
+        let dbFile = null;
+        zip.forEach((relativePath, zipEntry) => {
+            if (!zipEntry.dir && (
+                relativePath.endsWith(".sqlite") ||
+                relativePath.endsWith(".db") ||
+                relativePath.endsWith(".db3") ||
+                relativePath.endsWith(".sqlite3")
+            )) {
+                dbFile = zipEntry;
+            }
+        });
+
+        if (!dbFile) {
+            throw new Error("No SQLite database (.sqlite, .db, .db3, .sqlite3) found inside the ZIP file.");
+        }
+
+        const arrayBuffer = await dbFile.async("arraybuffer");
+        await loadDB(arrayBuffer);
+
+    } catch (err) {
         setIsLoading(false);
-        window.alert("Error reading file.");
-    };
-    reader.readAsArrayBuffer(file);
+        window.alert(err.message || err);
+    }
 }
 
 async function doDefaultSelect(name) {
