@@ -376,7 +376,7 @@ See http://github.com/bgrins/filereader.js for documentation.
             if (source[property] && source[property].constructor &&
                 source[property].constructor === Object) {
                 destination[property] = destination[property] || {};
-                arguments.callee(destination[property], source[property]);
+                extend(destination[property], source[property]);
             }
             else {
                 destination[property] = source[property];
