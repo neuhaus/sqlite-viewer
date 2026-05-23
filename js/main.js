@@ -257,12 +257,15 @@ async function getQueryRowCount(query) {
         return lastCachedQueryCount.count;
     }
 
-    let queryReplaced = query.replace(SQL_SELECT_REGEX, "SELECT COUNT(*) AS count FROM ");
+    if (/^\s*SELECT\b/i.test(query)) {
+        // Strip the outermost trailing LIMIT clause if it exists
+        let cleanQuery = query.replace(/\bLIMIT\s+\d+(?:\s*,\s*\d+)?\s*;?\s*$/i, "");
+        // Strip any trailing semicolons which are invalid inside subqueries
+        cleanQuery = cleanQuery.trim().replace(/;+$/, "");
 
-    if (queryReplaced !== query) {
-        queryReplaced = queryReplaced.replace(SQL_LIMIT_REGEX, "");
+        const countQuery = `SELECT COUNT(*) AS count FROM (${cleanQuery})`;
         try {
-            const results = await sendWorkerMessage("exec", { sql: queryReplaced });
+            const results = await sendWorkerMessage("exec", { sql: countQuery });
             if (results.results && results.results.length > 0) {
                 const count = results.results[0].values[0][0];
                 lastCachedQueryCount.select = query;
@@ -271,7 +274,7 @@ async function getQueryRowCount(query) {
             }
             return -1;
         } catch (e) {
-            console.error(e);
+            console.error("Error executing count query:", e);
             return -1;
         }
     } else {
