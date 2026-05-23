@@ -5,3 +5,4 @@
 *~
 node_modules/
 *.map
+/sqlite-wasm-3530100/
