@@ -82,7 +82,8 @@ onmessage = function (event) {
                     // Push a new scope on the WASM allocator stack
                     const stack = sqlite3.wasm.scopedAllocPush();
                     try {
-                        const isTA = sqlite3.util.isSQLableTypedArray(sqlString);
+                        const isSQLableTypedArray = (v) => v && (v instanceof Uint8Array || v instanceof Int8Array || v instanceof ArrayBuffer);
+                        const isTA = isSQLableTypedArray(sqlString);
                         let sqlByteLen = isTA ? sqlString.byteLength : sqlite3.wasm.jstrlen(sqlString);
 
                         // Allocate memory for statement pointers and SQL tail
