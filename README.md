@@ -13,7 +13,7 @@ and prefill a SQL query using hash parameters:
 - To load a remote file *and* prefill a query at the same time: Append both like this:<br>
   `#url=examples/Chinook_Sqlite.zip&sql=SELECT%20*%20FROM%20table`
 
-![](/img/preview.png?raw=true "Example sqlite")
+![](/img/preview.png?raw=true "Screenshot")
 
 ## Libraries
 
