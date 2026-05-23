@@ -47,6 +47,7 @@ function sendWorkerMessage(action, payload = {}, transferables = []) {
 
 let lastCachedQueryCount = { select: "", count: 0 };
 let loadedTableNames = [];
+let currentDbKey = "default";
 let editor = null;
 const errorBox = $("#error");
 const infoBox = $("#info");
@@ -128,6 +129,7 @@ function initialize() {
 async function loadRemoteDB(urlStr) {
     try {
         const resolvedUrl = new URL(decodeURIComponent(urlStr), window.location.href);
+        currentDbKey = "url:" + encodeURIComponent(resolvedUrl.href);
         setIsLoading(true);
         const response = await fetch(resolvedUrl.href);
         if (!response.ok) {
@@ -156,6 +158,7 @@ async function loadDB(arrayBuffer) {
         // Send ArrayBuffer to Worker using transferable array for 0-copy transfer
         await sendWorkerMessage("open", { buffer: arrayBuffer }, [arrayBuffer]);
         dbLoaded = true;
+        renderQueryHistory();
 
         const firstTableName = await populateTableList(true);
         const sqlParam = hashParams.get("sql");
@@ -400,6 +403,7 @@ function handleFile(file) {
     if (file.name.endsWith(".zip")) {
         handleZipFile(file);
     } else {
+        currentDbKey = `file:${file.name}-${file.size}-${file.lastModified}`;
         setIsLoading(true);
         const reader = new FileReader();
         reader.onload = function (e) {
@@ -435,6 +439,9 @@ async function handleZipFile(file) {
         }
 
         const arrayBuffer = await dbFile.async("arraybuffer");
+        if (file && typeof file.name === "string") {
+            currentDbKey = `zip:${file.name}:${dbFile.name}-${arrayBuffer.byteLength}`;
+        }
         await loadDB(arrayBuffer);
 
     } catch (err) {
@@ -451,6 +458,7 @@ async function doDefaultSelect(name) {
 
 async function executeSql() {
     const query = editor.toString();
+    saveQueryToHistory(query);
     await renderQuery(query);
 
     // If query creates, drops, alters, or modifies data, refresh the dropdown to keep counts/names in sync
@@ -762,4 +770,138 @@ async function exportQueryTableToCsv() {
     }
 
     setIsLoading(false);
+}
+
+// --- Partitioned Query History API ---
+const HISTORY_PREFIX = "sqlite_viewer_history_";
+const MAX_HISTORY_ITEMS = 50;
+
+function getActiveStorageKey() {
+    return HISTORY_PREFIX + currentDbKey;
+}
+
+function getQueryHistory() {
+    try {
+        const key = getActiveStorageKey();
+        const stored = localStorage.getItem(key);
+        return stored ? JSON.parse(stored) : [];
+    } catch (e) {
+        console.error("Failed to read history from localStorage:", e);
+        return [];
+    }
+}
+
+function saveQueryToHistory(sql) {
+    if (!sql || sql.trim() === "" || currentDbKey === "default") return;
+    
+    // Skip auto-generated pagination count queries
+    if (/^\s*SELECT\s+COUNT\(\*\)\s+(AS\s+\w+\s+)?FROM/i.test(sql)) return;
+
+    let historyList = getQueryHistory();
+    
+    // Move duplicate queries to the top
+    historyList = historyList.filter(item => item.sql.trim() !== sql.trim());
+    
+    historyList.unshift({
+        sql: sql.trim(),
+        timestamp: Date.now()
+    });
+
+    if (historyList.length > MAX_HISTORY_ITEMS) {
+        historyList = historyList.slice(0, MAX_HISTORY_ITEMS);
+    }
+
+    localStorage.setItem(getActiveStorageKey(), JSON.stringify(historyList));
+    renderQueryHistory();
+}
+
+function clearQueryHistory() {
+    if (confirm("Are you sure you want to clear history for this database?")) {
+        localStorage.removeItem(getActiveStorageKey());
+        renderQueryHistory();
+    }
+}
+
+function clearAllDatabasesHistory() {
+    if (confirm("This will permanently delete query histories for ALL databases. Proceed?")) {
+        Object.keys(localStorage)
+            .filter(key => key.startsWith(HISTORY_PREFIX))
+            .forEach(key => localStorage.removeItem(key));
+        renderQueryHistory();
+    }
+}
+
+function deleteHistoryItem(index) {
+    let historyList = getQueryHistory();
+    historyList.splice(index, 1);
+    localStorage.setItem(getActiveStorageKey(), JSON.stringify(historyList));
+    renderQueryHistory();
+}
+
+function loadQueryFromHistory(sql) {
+    editor.updateCode(sql);
+    executeSql();
+    
+    // Close offcanvas sidebar
+    const offcanvasEl = document.getElementById("history-sidebar");
+    if (offcanvasEl && typeof bootstrap !== "undefined" && bootstrap.Offcanvas) {
+        const offcanvas = bootstrap.Offcanvas.getInstance(offcanvasEl);
+        if (offcanvas) offcanvas.hide();
+    }
+}
+
+function renderQueryHistory() {
+    const historyListContainer = $("#history-list");
+    if (historyListContainer.length === 0) return;
+    
+    const historyList = getQueryHistory();
+    
+    $("#history-count").text(`${historyList.length} queries saved`);
+    historyListContainer.empty();
+
+    // Set a friendly name in the offcanvas header
+    let friendlyName = "Default";
+    if (currentDbKey !== "default") {
+        if (currentDbKey.startsWith("url:")) {
+            friendlyName = decodeURIComponent(currentDbKey.substring(4)).split("/").pop();
+        } else if (currentDbKey.startsWith("file:")) {
+            friendlyName = currentDbKey.substring(5).split("-")[0];
+        } else if (currentDbKey.startsWith("zip:")) {
+            const parts = currentDbKey.substring(4).split(":");
+            friendlyName = parts.length > 1 ? parts[1].split("-")[0] : parts[0];
+        }
+    }
+    $("#history-sidebar-label").text(`History: ${friendlyName}`);
+
+    if (historyList.length === 0) {
+        historyListContainer.append('<div class="text-center text-secondary py-5">No queries in history yet.</div>');
+        return;
+    }
+
+    historyList.forEach((item, index) => {
+        const dateStr = new Date(item.timestamp).toLocaleString();
+        
+        // Escape SQL for safe HTML rendering
+        const escapedSql = item.sql
+            .replace(/&/g, "&amp;")
+            .replace(/</g, "&lt;")
+            .replace(/>/g, "&gt;");
+
+        const card = $(`
+            <div class="card shadow-sm border-0 border-start border-3 border-primary query-card">
+                <div class="card-body p-2 d-flex flex-column gap-1">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <small class="text-secondary font-monospace" style="font-size: 0.75rem">${dateStr}</small>
+                        <button class="btn btn-link p-0 text-danger text-decoration-none" style="font-size: 0.85rem" onclick="deleteHistoryItem(${index})">Delete</button>
+                    </div>
+                    <pre class="p-2 mb-1 overflow-x-auto" onclick="loadQueryFromHistory(decodeURIComponent('${encodeURIComponent(item.sql)}'))">${escapedSql}</pre>
+                    <div class="d-flex gap-2 mt-1">
+                        <button class="btn btn-sm btn-light py-0 px-2" onclick="loadQueryFromHistory(decodeURIComponent('${encodeURIComponent(item.sql)}'))">Run</button>
+                        <button class="btn btn-sm btn-light py-0 px-2" onclick="navigator.clipboard.writeText(decodeURIComponent('${encodeURIComponent(item.sql)}'))">Copy</button>
+                    </div>
+                </div>
+            </div>
+        `);
+        historyListContainer.append(card);
+    });
 }

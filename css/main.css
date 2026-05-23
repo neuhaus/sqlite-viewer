@@ -105,3 +105,37 @@
     text-overflow: ellipsis;
     white-space: nowrap;
 }
+
+/* Query History Sidebar Custom Styling */
+.query-card {
+    border-radius: 6px;
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.query-card:hover {
+    transform: translateY(-1px);
+}
+
+.query-card pre {
+    max-height: 90px;
+    font-family: var(--bs-font-monospace), monospace;
+    font-size: 13px;
+    border-radius: 4px;
+    border: 1px solid var(--bs-border-color);
+    background-color: var(--bs-tertiary-bg) !important;
+    color: var(--bs-body-color) !important;
+    cursor: pointer;
+    transition: filter 0.15s ease, background-color 0.15s ease;
+}
+
+.query-card pre:hover {
+    filter: brightness(0.95);
+    background-color: var(--bs-secondary-bg) !important;
+}
+
+/* Make sure dark mode handles brightness correctly */
+@media (prefers-color-scheme: dark) {
+    .query-card pre:hover {
+        filter: brightness(1.15);
+    }
+}
