@@ -2,7 +2,7 @@
 .git
 .gitignore
 
-# Exclude large development and sample databases
+# Exclude sample databases
 examples
 
 # Exclude development files and documentation
