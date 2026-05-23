@@ -145,40 +145,12 @@ async function loadDB(arrayBuffer) {
         await sendWorkerMessage("open", { buffer: arrayBuffer }, [arrayBuffer]);
         dbLoaded = true;
 
-        // Get all table names from master table using exec action
-        const masterResults = await sendWorkerMessage("exec", {
-            sql: "SELECT name, type FROM sqlite_master WHERE type='table' OR type='view' ORDER BY name"
-        });
-
-        const tableList = $("#tables");
-        let firstTableName = null;
-
-        if (masterResults.results && masterResults.results.length > 0) {
-            const rows = masterResults.results[0].values;
-            for (let i = 0; i < rows.length; i++) {
-                const name = rows[i][0];
-                const type = rows[i][1];
-
-                if (firstTableName === null) {
-                    firstTableName = name;
-                }
-
-                // getTableRowsCount is now asynchronous
-                const rowCount = await getTableRowsCount(name);
-                loadedTableNames.push(name);
-                const tableType = type !== "table" ? `, ${type}` : "";
-                const option = $("<option>").val(name).text(`${name} (${rowCount} rows${tableType})`);
-                tableList.append(option);
-            }
-        }
-
-        //Select first table and show It
-        tableList.val(firstTableName);
+        const firstTableName = await populateTableList(true);
         const sqlParam = hashParams.get("sql");
         if (sqlParam != null) {
             editor.updateCode(sqlParam);
             await renderQuery(sqlParam);
-        } else {
+        } else if (firstTableName !== null) {
             await doDefaultSelect(firstTableName);
         }
 
@@ -195,6 +167,56 @@ async function loadDB(arrayBuffer) {
         window.alert(ex.message || ex);
     } finally {
         setIsLoading(false);
+    }
+}
+
+async function populateTableList(selectFirst = false) {
+    const tableList = $("#tables");
+    const currentSelected = tableList.val();
+
+    // Reset table name cache
+    loadedTableNames = [];
+    tableList.empty();
+    tableList.append("<option></option>");
+
+    try {
+        const masterResults = await sendWorkerMessage("exec", {
+            sql: "SELECT name, type FROM sqlite_master WHERE type='table' OR type='view' ORDER BY name"
+        });
+
+        let firstTableName = null;
+
+        if (masterResults.results && masterResults.results.length > 0) {
+            const rows = masterResults.results[0].values;
+            for (let i = 0; i < rows.length; i++) {
+                const name = rows[i][0];
+                const type = rows[i][1];
+
+                if (firstTableName === null) {
+                    firstTableName = name;
+                }
+
+                const rowCount = await getTableRowsCount(name);
+                loadedTableNames.push(name);
+                const tableType = type !== "table" ? `, ${type}` : "";
+                const option = $("<option>").val(name).text(`${name} (${rowCount} rows${tableType})`);
+                tableList.append(option);
+            }
+        }
+
+        if (selectFirst && firstTableName !== null) {
+            tableList.val(firstTableName).trigger("change.select2");
+            return firstTableName;
+        } else if (currentSelected && loadedTableNames.includes(currentSelected)) {
+            tableList.val(currentSelected).trigger("change.select2");
+            return currentSelected;
+        } else {
+            tableList.val(null).trigger("change.select2");
+            return null;
+        }
+    } catch (e) {
+        console.error("Error populating table list:", e);
+        return null;
     }
 }
 
@@ -409,7 +431,15 @@ async function doDefaultSelect(name) {
 async function executeSql() {
     const query = editor.toString();
     await renderQuery(query);
-    $("#tables").val(getTableNameFromQuery(query));
+
+    // If query creates, drops, alters, or modifies data, refresh the dropdown to keep counts/names in sync
+    const SCHEMA_MODIFY_REGEX = /\b(create|drop|alter|insert|delete|update|replace)\b/i;
+    if (SCHEMA_MODIFY_REGEX.test(query)) {
+        await populateTableList();
+    } else {
+        $("#tables").val(getTableNameFromQuery(query)).trigger("change.select2");
+    }
+
     updateHashSql(query);
 }
 
