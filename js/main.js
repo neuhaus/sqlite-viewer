@@ -86,16 +86,10 @@ function initialize() {
     const loadUrlDB = hashParams.get("url");
     if (loadUrlDB != null) {
         setIsLoading(true);
-        const xhr = new XMLHttpRequest();
-        xhr.open("GET", decodeURIComponent(loadUrlDB), true);
-        xhr.responseType = "arraybuffer";
-        xhr.onload = function (e) {
-            loadDB(this.response);
-        };
-        xhr.onerror = function (e) {
-            setIsLoading(false);
-        };
-        xhr.send();
+        fetch(decodeURIComponent(loadUrlDB))
+            .then(response => response.arrayBuffer())
+            .then(buffer => loadDB(buffer))
+            .catch(() => setIsLoading(false));
     }
 }
 
