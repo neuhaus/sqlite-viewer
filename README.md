@@ -15,6 +15,8 @@ and prefill a SQL query using hash parameters:
 
 ![](/img/preview.png?raw=true "Screenshot")
 
+Try [this live example](https://neuhaus.github.io/sqlite-viewer/#url=examples%2FChinook_Sqlite.zip&sql=SELECT+%0A++++Album.AlbumId%2C%0A++++Album.Title+AS+AlbumTitle%2C%0A++++Track.TrackId%2C%0A++++Track.Name+AS+TrackName%0AFROM+Album%0AJOIN+Track+ON+Album.AlbumId+%3D+Track.AlbumId%0AORDER+BY+Album.AlbumId%2C+TrackId%0ALIMIT+0%2C40%3B+)!
+
 ## Libraries
 
 - Using the official [sqlite3-wasm](https://sqlite.org/wasm/doc/trunk/index.md) for parsing sqlite files.
