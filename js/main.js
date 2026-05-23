@@ -3,7 +3,7 @@
 const SQL_WASM_PATH = "js/sql-wasm.wasm";
 
 const SQL_FROM_REGEX = /FROM\s+((?=['"])((["'])(?<g1>[^'"]+))|(?<g2>\w+))/mi;
-const SQL_LIMIT_REGEX = /LIMIT\s+(\d+)(?:\s*,\s*(\d+))?/mi;
+const SQL_LIMIT_REGEX = /\bLIMIT\s+(\d+)(?:\s*,\s*(\d+)|\s+OFFSET\s+(\d+))?(\s*;?\s*)$/i;
 const SQL_SELECT_REGEX = /SELECT\s+[^;]+\s+FROM\s+/mi;
 
 function quoteIdentifier(name) {
@@ -259,7 +259,7 @@ async function getQueryRowCount(query) {
 
     if (/^\s*SELECT\b/i.test(query)) {
         // Strip the outermost trailing LIMIT clause if it exists
-        let cleanQuery = query.replace(/\bLIMIT\s+\d+(?:\s*,\s*\d+)?\s*;?\s*$/i, "");
+        let cleanQuery = query.replace(SQL_LIMIT_REGEX, "$4");
         // Strip any trailing semicolons which are invalid inside subqueries
         cleanQuery = cleanQuery.trim().replace(/;+$/, "");
 
@@ -479,10 +479,16 @@ async function parseLimitFromQuery(query) {
     if (sqlRegex != null) {
         let result = { max: 0, offset: 0 };
 
-        if (sqlRegex.length > 2 && typeof sqlRegex[2] !== "undefined") {
+        if (sqlRegex[3] !== undefined) {
+            // LIMIT <max> OFFSET <offset>
+            result.max = parseInt(sqlRegex[1]);
+            result.offset = parseInt(sqlRegex[3]);
+        } else if (sqlRegex[2] !== undefined) {
+            // LIMIT <offset>, <max>
             result.offset = parseInt(sqlRegex[1]);
             result.max = parseInt(sqlRegex[2]);
         } else {
+            // LIMIT <max>
             result.offset = 0;
             result.max = parseInt(sqlRegex[1]);
         }
@@ -525,7 +531,7 @@ async function setPage(el, next) {
     }
 
     const offset = (pageToSet * limit.max);
-    editor.updateCode(query.replace(SQL_LIMIT_REGEX, `LIMIT ${offset},${limit.max}`));
+    editor.updateCode(query.replace(SQL_LIMIT_REGEX, `LIMIT ${offset},${limit.max}$4`));
 
     await executeSql();
 }
