@@ -40,14 +40,6 @@ const selectFormatter = function (item) {
 initialize();
 
 function initialize() {
-    let fileReaderOpts = {
-        readAsDefault: "ArrayBuffer", on: {
-            load: function (e) {
-                loadDB(e.target.result);
-            }
-        }
-    };
-
     let toggleFullScreen = function () {
         const container = $("#main-container");
         const resizerExpandIcon = $("#resizer-expand");
@@ -64,7 +56,7 @@ function initialize() {
         $("#dropzone, #dropzone-dialog").hide();
         $("#compat-error").toggleClass("d-none", false);
     } else {
-        $("#dropzone, #dropzone-dialog").fileReaderJS(fileReaderOpts);
+        setupDragAndDrop();
     }
 
     //Initialize editor
@@ -241,6 +233,70 @@ function setIsLoading(isLoading) {
 
 function dropzoneClick() {
     $("#dropzone-dialog").click();
+}
+
+function setupDragAndDrop() {
+    const dropzone = document.getElementById("dropzone");
+    const fileInput = document.getElementById("dropzone-dialog");
+
+    // Prevent default drag behaviors for window to avoid opening files dropped outside the dropzone
+    window.addEventListener("dragover", function (e) {
+        e.preventDefault();
+    }, false);
+    window.addEventListener("drop", function (e) {
+        e.preventDefault();
+    }, false);
+
+    // Drag-and-drop event handlers for the dropzone area
+    dropzone.addEventListener("dragenter", function (e) {
+        e.preventDefault();
+        e.stopPropagation();
+        dropzone.classList.add("drag");
+    }, false);
+
+    dropzone.addEventListener("dragover", function (e) {
+        e.preventDefault();
+        e.stopPropagation();
+        dropzone.classList.add("drag");
+    }, false);
+
+    dropzone.addEventListener("dragleave", function (e) {
+        e.preventDefault();
+        e.stopPropagation();
+        dropzone.classList.remove("drag");
+    }, false);
+
+    dropzone.addEventListener("drop", function (e) {
+        e.preventDefault();
+        e.stopPropagation();
+        dropzone.classList.remove("drag");
+
+        const files = e.dataTransfer.files;
+        if (files && files.length > 0) {
+            handleFile(files[0]);
+        }
+    }, false);
+
+    // Click file selector handling
+    fileInput.addEventListener("change", function (e) {
+        const files = e.target.files;
+        if (files && files.length > 0) {
+            handleFile(files[0]);
+        }
+    }, false);
+}
+
+function handleFile(file) {
+    setIsLoading(true);
+    const reader = new FileReader();
+    reader.onload = function (e) {
+        loadDB(e.target.result);
+    };
+    reader.onerror = function () {
+        setIsLoading(false);
+        window.alert("Error reading file.");
+    };
+    reader.readAsArrayBuffer(file);
 }
 
 function doDefaultSelect(name) {
