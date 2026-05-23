@@ -58,7 +58,7 @@
         Sorry but your browser does not support some of new HTML5 features! Try using latest version of Google Chrome or Firefox.
     </div>
 
-    <div class="row text-center p-3 align-items-stretch" id="dropzone" onclick="dropzoneClick(this)">
+    <div class="row text-center p-3 align-items-stretch" id="dropzone" onclick="dropzoneClick()">
         <div class="d-flex border border-info-subtle rounded-1 align-items-center justify-content-center">
             <div id="drop-text">
                 <b>Drop file here</b> to load content or click on this box to open file dialog.<br/>
@@ -97,7 +97,7 @@
 
         <div class="d-flex mt-3 mb-3">
             <div id="sql-editor" class="form-control form-control-lg col me-2"></div>
-            <button class="btn btn-primary col-auto" id="sql-run" type="submit" onclick="executeSql(this)">Execute</button>
+            <button class="btn btn-primary col-auto" id="sql-run" type="submit" onclick="executeSql()">Execute</button>
         </div>
 
         <div class="alert alert-danger" id="error" style="display: none"></div>
