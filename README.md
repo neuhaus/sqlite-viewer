@@ -3,6 +3,9 @@ SQLite Viewer
 
 *View SQLite file online directly in your browser.*
 
+The database will be loaded into your memory and changes will not affect the file you loaded it from. You can
+however export the database after making changes.
+
 You can also load remote files (using JS ajax, remote server must send `Access-Control-Allow-Origin:*`) 
 and prefill a SQL query using hash parameters:
 
